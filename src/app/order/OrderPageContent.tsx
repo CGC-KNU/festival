@@ -36,7 +36,7 @@ export default function OrderPageContent() {
   const [sideModalOpen, setSideModalOpen] = useState(false);
   const [pendingSetMenu, setPendingSetMenu] = useState<MenuItem | null>(null);
 
-  const tableCharge = headCount * TABLE_CHARGE_PER_PERSON;
+  const tableCharge = TABLE_CHARGE_PER_PERSON;
   const cartTotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const totalAmount = cartTotal + tableCharge;
 
@@ -111,7 +111,7 @@ export default function OrderPageContent() {
       headCount,
       depositorName: depositorName.trim(),
       items: cartItems,
-      tableCharge: { price: 3000 as const, quantity: headCount, total: tableCharge },
+      tableCharge: { price: 3000 as const, quantity: 1, total: TABLE_CHARGE_PER_PERSON },
       totalAmount,
     };
     sessionStorage.setItem("pendingOrder", JSON.stringify(pendingOrder));
@@ -169,11 +169,7 @@ export default function OrderPageContent() {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="font-medium text-white">인원 수</p>
-              {headCount > 0 && (
-                <p className="text-xs text-white/40">
-                  상차림비 {(headCount * TABLE_CHARGE_PER_PERSON).toLocaleString()}원 포함
-                </p>
-              )}
+              <p className="text-xs text-white/40">상차림비 3,000원 포함</p>
             </div>
             <div className="flex items-center gap-3">
               <button
@@ -264,7 +260,7 @@ export default function OrderPageContent() {
                 <div className="flex items-center justify-between bg-indigo-500/10 rounded-xl px-3 py-2.5 border border-indigo-500/20">
                   <div>
                     <p className="text-sm font-medium text-white/80">상차림비</p>
-                    <p className="text-xs text-white/35">{headCount}명 × 3,000원 · 삭제 불가</p>
+                    <p className="text-xs text-white/35">테이블당 3,000원 · 삭제 불가</p>
                   </div>
                   <p className="font-bold text-white">{tableCharge.toLocaleString()}원</p>
                 </div>

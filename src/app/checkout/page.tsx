@@ -95,7 +95,7 @@ export default function CheckoutPage() {
           <h2 className="font-bold text-white/80 mb-3 text-sm">주문 내역</h2>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-white/50">상차림비 ({pendingOrder.headCount}명)</span>
+              <span className="text-white/50">상차림비</span>
               <span className="text-white">{pendingOrder.tableCharge.total.toLocaleString()}원</span>
             </div>
             {pendingOrder.items.map((item, index) => (

@@ -78,7 +78,7 @@ export default function OrderCompleteContent() {
           <h3 className="font-bold text-white/80 mb-3 text-sm">주문 내역</h3>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-white/50">상차림비 ({order.headCount}명)</span>
+              <span className="text-white/50">상차림비</span>
               <span className="text-white">{order.tableCharge.total.toLocaleString()}원</span>
             </div>
             {order.items.map((item, index) => (

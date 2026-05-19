@@ -194,7 +194,7 @@ function AdminMain() {
                     <div className="border-t border-white/5 pt-2 space-y-1">
                       <p className="text-xs text-white/30 mb-1">주문 내역</p>
                       <div className="text-sm text-white/50">
-                        상차림비 ({order.headCount}명) — {order.tableCharge.total.toLocaleString()}원
+                        상차림비 — {order.tableCharge.total.toLocaleString()}원
                       </div>
                       {order.items.map((item, i) => (
                         <div key={`${item.id}-${i}`} className="text-sm text-white/50">
