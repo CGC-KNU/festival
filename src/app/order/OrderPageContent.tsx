@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { MAIN_MENU, SIDE_MENU, SET_MENU } from "@/lib/menuData";
+import { MAIN_MENU, SIDE_MENU, SET_MENU, isMenuSoldOut } from "@/lib/menuData";
 import { TABLE_CHARGE_PER_PERSON } from "@/lib/constants";
 import SideMenuModal from "@/components/SideMenuModal";
 import type { CartItem, MenuItem } from "@/lib/types";
@@ -67,6 +67,7 @@ export default function OrderPageContent() {
   };
 
   const handleAddMenu = (item: MenuItem) => {
+    if (isMenuSoldOut(item.id)) return;
     if (item.category === "set") {
       setPendingSetMenu(item);
       setSideModalOpen(true);
@@ -93,16 +94,11 @@ export default function OrderPageContent() {
     setCartItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const hasMainOrSet = cartItems.some(
-    (ci) => ci.category === "main" || ci.category === "set"
-  );
-
   const canOrder =
     tableNumber !== "" &&
     headCount > 0 &&
     depositorName.trim().length > 0 &&
-    cartItems.length > 0 &&
-    hasMainOrSet;
+    cartItems.length > 0;
 
   const handleOrder = () => {
     if (!canOrder) return;
@@ -198,8 +194,8 @@ export default function OrderPageContent() {
 
         {/* 주의사항 */}
         <section className="bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm text-amber-400">
-          <p className="font-bold mb-0.5">⚠️ 주의사항</p>
-          <p className="text-amber-300/80">메인 메뉴 또는 세트 메뉴를 반드시 1개 이상 주문해야 합니다.</p>
+          <p className="font-bold mb-0.5">⚠️ 안내</p>
+          <p className="text-amber-300/80">사이드 메뉴만 주문하셔도 됩니다. 상차림비 3,000원이 포함됩니다.</p>
         </section>
 
         {/* 메뉴 */}
@@ -223,26 +219,46 @@ export default function OrderPageContent() {
 
           {/* 메뉴 목록 */}
           <div className="divide-y divide-white/5">
-            {currentMenuItems.map((item) => (
-              <div key={item.id} className="p-4 flex items-center justify-between gap-3">
+            {currentMenuItems.map((item) => {
+              const soldOut = isMenuSoldOut(item.id);
+              return (
+              <div
+                key={item.id}
+                className={`p-4 flex items-center justify-between gap-3 ${soldOut ? "opacity-50" : ""}`}
+              >
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-white">{item.name}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className={`font-medium ${soldOut ? "text-white/50" : "text-white"}`}>
+                      {item.name}
+                    </p>
+                    {soldOut && (
+                      <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                        품절
+                      </span>
+                    )}
+                  </div>
                   {item.baseItems && (
                     <p className="text-xs text-white/35 mt-0.5">{item.baseItems}</p>
                   )}
-                  <p className="text-amber-400 font-bold mt-1 text-sm">
+                  <p className={`font-bold mt-1 text-sm ${soldOut ? "text-white/30" : "text-amber-400"}`}>
                     {item.price.toLocaleString()}원
                   </p>
                 </div>
                 <button
                   onClick={() => handleAddMenu(item)}
-                  className="shrink-0 bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-indigo-500 active:scale-95 transition-all"
-                  style={{ boxShadow: "0 2px 12px rgba(99,102,241,0.35)" }}
+                  disabled={soldOut}
+                  className={`shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    soldOut
+                      ? "bg-white/10 text-white/30 cursor-not-allowed"
+                      : "bg-indigo-600 text-white hover:bg-indigo-500 active:scale-95"
+                  }`}
+                  style={soldOut ? undefined : { boxShadow: "0 2px 12px rgba(99,102,241,0.35)" }}
                 >
-                  + 담기
+                  {soldOut ? "품절" : "+ 담기"}
                 </button>
               </div>
-            ))}
+            );
+            })}
           </div>
         </section>
 
@@ -294,12 +310,6 @@ export default function OrderPageContent() {
                   </div>
                 </div>
               ))}
-
-              {cartItems.length > 0 && !hasMainOrSet && (
-                <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-3 py-2 text-xs text-red-400">
-                  메인 또는 세트 메뉴를 1개 이상 추가해야 주문할 수 있습니다.
-                </div>
-              )}
 
               {(headCount > 0 || cartItems.length > 0) && (
                 <div className="border-t border-white/10 pt-3 flex justify-between">

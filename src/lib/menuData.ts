@@ -29,3 +29,14 @@ export const COUPON_MENU: MenuItem[] = [
 ];
 
 export const SIDE_OPTIONS = ["샤베트", "황도", "어묵탕", "설탕 토마토"] as const;
+
+/** 운영 중 품절 해제 시 id만 제거하면 됩니다 */
+export const SOLD_OUT_MENU_IDS = [
+  "main_garlic_shrimp",
+  "set_a",
+  "set_alcohol",
+] as const;
+
+export function isMenuSoldOut(menuId: string) {
+  return (SOLD_OUT_MENU_IDS as readonly string[]).includes(menuId);
+}
