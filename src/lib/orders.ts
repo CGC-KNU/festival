@@ -44,21 +44,25 @@ export async function createOrder(pending: PendingOrder) {
 
   // Prefer Firestore, but keep a local fallback for environments without config.
   if (isFirebaseConfigured()) {
-    const ref = await addDoc(collection(db, "orders"), {
-      ...base,
-      createdAt: serverTimestamp(),
-    });
+    try {
+      const ref = await addDoc(collection(db, "orders"), {
+        ...base,
+        createdAt: serverTimestamp(),
+      });
 
-    const order: Order = {
-      ...base,
-      id: ref.id,
-      createdAt: new Date().toISOString(), // client fallback string for UI; server timestamp is stored too
-    };
+      const order: Order = {
+        ...base,
+        id: ref.id,
+        createdAt: new Date().toISOString(), // client fallback string for UI; server timestamp is stored too
+      };
 
-    // Keep local mirror so admin/order-complete still works offline if desired.
-    const existing = loadOrdersLocal();
-    saveOrdersLocal([order, ...existing]);
-    return order;
+      // Keep local mirror so admin/order-complete still works offline if desired.
+      const existing = loadOrdersLocal();
+      saveOrdersLocal([order, ...existing]);
+      return order;
+    } catch {
+      // Fall back to local if Firestore denies writes (e.g. rules) or misconfigured runtime.
+    }
   }
 
   const id = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -81,31 +85,38 @@ export function subscribeOrders(onChange: (orders: Order[]) => void) {
   }
 
   const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
-  return onSnapshot(q, (snap) => {
-    const orders: Order[] = snap.docs.map((d) => {
-      const data = d.data() as Omit<Order, "id"> & { createdAt?: any };
-      const createdAt =
-        data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString();
-      return {
-        ...(data as any),
-        id: d.id,
-        createdAt,
-      } as Order;
-    });
-    onChange(orders);
+  try {
+    return onSnapshot(q, (snap) => {
+      const orders: Order[] = snap.docs.map((d) => {
+        const data = d.data() as Omit<Order, "id"> & { createdAt?: any };
+        const createdAt =
+          data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString();
+        return {
+          ...(data as any),
+          id: d.id,
+          createdAt,
+        } as Order;
+      });
+      onChange(orders);
 
-    // mirror
-    saveOrdersLocal(orders);
-  });
+      // mirror
+      saveOrdersLocal(orders);
+    });
+  } catch {
+    onChange(loadOrdersLocal());
+    const handler = () => onChange(loadOrdersLocal());
+    window.addEventListener("storage", handler);
+    return () => window.removeEventListener("storage", handler);
+  }
 }
 
 export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   if (isFirebaseConfigured()) {
-    await setDoc(
-      doc(db, "orders", orderId),
-      { status },
-      { merge: true }
-    );
+    try {
+      await setDoc(doc(db, "orders", orderId), { status }, { merge: true });
+    } catch {
+      // ignore and still update local mirror for resilience
+    }
   }
 
   const updated = loadOrdersLocal().map((o) =>
@@ -117,17 +128,21 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
 
 export async function getOrderById(orderId: string) {
   if (isFirebaseConfigured()) {
-    const snap = await getDoc(doc(db, "orders", orderId));
-    if (!snap.exists()) return null;
-    const data = snap.data() as Omit<Order, "id"> & { createdAt?: any };
-    const createdAt =
-      data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString();
-    const order: Order = {
-      ...(data as any),
-      id: snap.id,
-      createdAt,
-    };
-    return order;
+    try {
+      const snap = await getDoc(doc(db, "orders", orderId));
+      if (!snap.exists()) return null;
+      const data = snap.data() as Omit<Order, "id"> & { createdAt?: any };
+      const createdAt =
+        data.createdAt?.toDate?.().toISOString?.() ?? new Date().toISOString();
+      const order: Order = {
+        ...(data as any),
+        id: snap.id,
+        createdAt,
+      };
+      return order;
+    } catch {
+      // fallback below
+    }
   }
 
   return loadOrdersLocal().find((o) => o.id === orderId) ?? null;
