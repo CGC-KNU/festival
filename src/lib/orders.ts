@@ -1,5 +1,5 @@
 import type { Order, OrderStatus, PendingOrder } from "@/lib/types";
-import { db } from "@/lib/firebase";
+import { db, firebaseEnabled } from "@/lib/firebase";
 import {
   addDoc,
   collection,
@@ -15,15 +15,7 @@ import {
 const LOCAL_KEY = "jumak_orders";
 
 function isFirebaseConfigured() {
-  // NEXT_PUBLIC_* envs are embedded at build-time. If any are missing,
-  // Firestore init may still succeed but operations will fail at runtime.
-  // We use the same presence check as firebase.ts expects.
-  return Boolean(
-    process.env.NEXT_PUBLIC_FIREBASE_API_KEY &&
-      process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN &&
-      process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID &&
-      process.env.NEXT_PUBLIC_FIREBASE_APP_ID
-  );
+  return firebaseEnabled && db !== null;
 }
 
 export function loadOrdersLocal(): Order[] {
@@ -45,7 +37,7 @@ export async function createOrder(pending: PendingOrder) {
   // Prefer Firestore, but keep a local fallback for environments without config.
   if (isFirebaseConfigured()) {
     try {
-      const ref = await addDoc(collection(db, "orders"), {
+      const ref = await addDoc(collection(db!, "orders"), {
         ...base,
         createdAt: serverTimestamp(),
       });
@@ -84,7 +76,7 @@ export function subscribeOrders(onChange: (orders: Order[]) => void) {
     return () => window.removeEventListener("storage", handler);
   }
 
-  const q = query(collection(db, "orders"), orderBy("createdAt", "desc"));
+  const q = query(collection(db!, "orders"), orderBy("createdAt", "desc"));
   try {
     return onSnapshot(q, (snap) => {
       const orders: Order[] = snap.docs.map((d) => {
@@ -113,7 +105,7 @@ export function subscribeOrders(onChange: (orders: Order[]) => void) {
 export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   if (isFirebaseConfigured()) {
     try {
-      await setDoc(doc(db, "orders", orderId), { status }, { merge: true });
+      await setDoc(doc(db!, "orders", orderId), { status }, { merge: true });
     } catch {
       // ignore and still update local mirror for resilience
     }
@@ -129,7 +121,7 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus) {
 export async function getOrderById(orderId: string) {
   if (isFirebaseConfigured()) {
     try {
-      const snap = await getDoc(doc(db, "orders", orderId));
+      const snap = await getDoc(doc(db!, "orders", orderId));
       if (!snap.exists()) return null;
       const data = snap.data() as Omit<Order, "id"> & { createdAt?: any };
       const createdAt =

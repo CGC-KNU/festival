@@ -10,5 +10,16 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-export const db = getFirestore(app);
+export const firebaseEnabled = Boolean(
+  firebaseConfig.apiKey &&
+    firebaseConfig.authDomain &&
+    firebaseConfig.projectId &&
+    firebaseConfig.appId
+);
+
+export const db = (() => {
+  if (!firebaseEnabled) return null;
+  const app =
+    getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+  return getFirestore(app);
+})();
