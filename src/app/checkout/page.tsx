@@ -4,10 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { BANK_INFO } from "@/lib/constants";
 import type { Order, PendingOrder } from "@/lib/types";
-
-function generateId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
+import { createOrder } from "@/lib/orders";
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -34,17 +31,15 @@ export default function CheckoutPage() {
   const handleSubmitOrder = () => {
     if (!pendingOrder || submitting) return;
     setSubmitting(true);
-    const orderId = generateId();
-    const newOrder: Order = {
-      ...pendingOrder,
-      id: orderId,
-      createdAt: new Date().toISOString(),
-      status: "입금 확인 대기",
-    };
-    const existing: Order[] = JSON.parse(localStorage.getItem("jumak_orders") ?? "[]");
-    localStorage.setItem("jumak_orders", JSON.stringify([newOrder, ...existing]));
-    sessionStorage.removeItem("pendingOrder");
-    router.push(`/order-complete?orderId=${orderId}`);
+    (async () => {
+      try {
+        const order = await createOrder(pendingOrder);
+        sessionStorage.removeItem("pendingOrder");
+        router.push(`/order-complete?orderId=${order.id}`);
+      } finally {
+        setSubmitting(false);
+      }
+    })();
   };
 
   if (!pendingOrder) {

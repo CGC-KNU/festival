@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { Order, OrderStatus } from "@/lib/types";
+import { subscribeOrders, updateOrderStatus } from "@/lib/orders";
 
 const ADMIN_PASSWORD = "0629";
 
@@ -23,14 +24,6 @@ const STATUS_STYLE: Record<OrderStatus, string> = {
 function getNextStatus(current: OrderStatus): OrderStatus | null {
   const idx = STATUS_FLOW.indexOf(current);
   return idx >= 0 && idx < STATUS_FLOW.length - 1 ? STATUS_FLOW[idx + 1] : null;
-}
-
-function loadOrders(): Order[] {
-  return JSON.parse(localStorage.getItem("jumak_orders") ?? "[]");
-}
-
-function saveOrders(orders: Order[]) {
-  localStorage.setItem("jumak_orders", JSON.stringify(orders));
 }
 
 // ─── 비밀번호 화면 ───────────────────────────────────────────
@@ -88,21 +81,13 @@ function PasswordGate({ onSuccess }: { onSuccess: () => void }) {
 function AdminMain() {
   const [orders, setOrders] = useState<Order[]>([]);
 
-  const refresh = () => setOrders(loadOrders());
-
   useEffect(() => {
-    refresh();
-    const handler = () => refresh();
-    window.addEventListener("storage", handler);
-    return () => window.removeEventListener("storage", handler);
+    const unsub = subscribeOrders(setOrders);
+    return () => unsub();
   }, []);
 
   const updateStatus = (orderId: string, newStatus: OrderStatus) => {
-    const updated = loadOrders().map((o) =>
-      o.id === orderId ? { ...o, status: newStatus } : o
-    );
-    saveOrders(updated);
-    setOrders(updated);
+    updateOrderStatus(orderId, newStatus).then((updated) => setOrders(updated));
   };
 
   const handleLogout = () => {
@@ -137,7 +122,10 @@ function AdminMain() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={refresh} className="text-white/40 hover:text-white/80 text-sm px-2 py-1 transition-colors">
+            <button
+              onClick={() => setOrders((o) => [...o])}
+              className="text-white/40 hover:text-white/80 text-sm px-2 py-1 transition-colors"
+            >
               🔄
             </button>
             <button onClick={handleLogout} className="text-white/30 hover:text-white/60 text-sm px-2 py-1 transition-colors">

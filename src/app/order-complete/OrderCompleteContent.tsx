@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import type { Order } from "@/lib/types";
+import { getOrderById } from "@/lib/orders";
 
 export default function OrderCompleteContent() {
   const searchParams = useSearchParams();
@@ -13,9 +14,11 @@ export default function OrderCompleteContent() {
 
   useEffect(() => {
     if (!orderId) { router.replace("/order"); return; }
-    const orders: Order[] = JSON.parse(localStorage.getItem("jumak_orders") ?? "[]");
-    setOrder(orders.find((o) => o.id === orderId) ?? null);
-    setLoading(false);
+    (async () => {
+      const found = await getOrderById(orderId);
+      setOrder(found);
+      setLoading(false);
+    })();
   }, [orderId, router]);
 
   if (loading) {
